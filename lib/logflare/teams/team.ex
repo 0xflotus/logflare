@@ -3,8 +3,10 @@ defmodule Logflare.Teams.Team do
   import Ecto.Changeset
   use TypedEctoSchema
 
+  @derive {Jason.Encoder, only: [:name, :user, :team_users]}
   typed_schema "teams" do
     field :name, :string
+    field :token, :string, autogenerate: {Ecto.UUID, :generate, []}
     belongs_to :user, Logflare.User
     has_many :team_users, Logflare.TeamUsers.TeamUser
 

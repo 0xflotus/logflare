@@ -1,13 +1,15 @@
 defmodule Logflare.Teams do
   @moduledoc false
   import Ecto.Query, warn: false
-  alias Logflare.{Repo, Teams.Team, TeamUsers.TeamUser, Users, User}
+  alias Logflare.Repo
+  alias Logflare.Teams.Team
+  alias Logflare.TeamUsers.TeamUser
+  alias Logflare.Users
+  alias Logflare.User
 
   @doc "Returns a list of teams. Unfiltered."
-  @spec list_teams() :: [Team.t()]
-  def list_teams do
-    Repo.all(Team)
-  end
+  @spec list_teams() :: list(Team.t())
+  def list_teams, do: Repo.all(Team)
 
   @doc "Gets a single team. Raises `Ecto.NoResultsError` if the Team does not exist."
   @spec get_team!(String.t() | number()) :: Team.t()
@@ -21,11 +23,8 @@ defmodule Logflare.Teams do
   @spec get_home_team(TeamUser.t()) :: Team.t() | nil
   def get_home_team(%TeamUser{email: email}) do
     case Users.get_by(email: email) |> Users.preload_team() do
-      nil ->
-        nil
-
-      user ->
-        user.team
+      nil -> nil
+      %{team: team} -> team
     end
   end
 
@@ -64,4 +63,28 @@ defmodule Logflare.Teams do
   @doc "Returns an `%Ecto.Changeset{}` for tracking team changes"
   @spec change_team(Team.t()) :: Ecto.Changeset.t()
   def change_team(%Team{} = team), do: Team.changeset(team, %{})
+
+  @doc "List all teams for user"
+  @spec list_for_user(User.t()) :: list(Team.t())
+  def list_for_user(%User{email: email}) do
+    Repo.all(
+      from t in Team,
+        join: tu in assoc(t, :team_users),
+        where: tu.email == ^email,
+        preload: [:user, :team_users]
+    )
+  end
+
+  @doc "Gets a single entry for a given user an a token"
+  @spec get(User.t(), binary()) :: Team.t() | nil
+  def get(%User{email: email}, token) do
+    Repo.one!(
+      from t in Team,
+        join: tu in assoc(t, :team_users),
+        where: tu.email == ^email,
+        where: t.token == ^token,
+        distinct: true,
+        preload: [:user, :team_users]
+    )
+  end
 end
